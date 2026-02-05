@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -f .env ])",
+      "Bash(then cat .env)",
+      "Bash(else echo \"NO .env FILE FOUND\")",
+      "Bash(fi:*)",
+      "Bash(pg_isready:*)",
+      "Bash(net start:*)",
+      "Bash(sc query:*)",
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(tree:*)",
+      "Bash([ -d .git ])",
+      "Bash([ -f package.json ])",
+      "Bash(wc:*)",
+      "Bash(git --version:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

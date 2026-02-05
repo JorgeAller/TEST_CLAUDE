@@ -1,0 +1,223 @@
+// This is your Prisma schema file for a Basketball Statistics Platform
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
+/// Represents a basketball season (e.g., "2023-24 NBA Season")
+model Season {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g., "2023-24"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  games Game[]
+
+  @@index([isActive])
+  @@map("seasons")
+}
+
+/// Represents a basketball team
+model Team {
+  id         String  @id @default(cuid())
+  name       String  @unique
+  city       String
+  abbreviation String @unique // e.g., "LAL", "GSW"
+  conference String? // e.g., "Eastern", "Western"
+  division   String? // e.g., "Atlantic", "Pacific"
+  logoUrl    String?
+  foundedYear Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  players      Player[]
+  homeGames    Game[]     @relation("HomeTeam")
+  awayGames    Game[]     @relation("AwayTeam")
+
+  @@index([conference, division])
+  @@map("teams")
+}
+
+/// Represents a basketball player
+model Player {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  jerseyNumber Int?
+  position    String?  // e.g., "PG", "SG", "SF", "PF", "C"
+  height      Int?     // Height in centimeters
+  weight      Int?     // Weight in kilograms
+  birthDate   DateTime?
+  nationality String?
+  photoUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign Keys
+  teamId      String?
+  
+  // Relations
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  gameStats   GameStats[]
+  playByPlayEvents PlayByPlayEvent[]
+
+  @@index([teamId])
+  @@index([isActive])
+  @@index([lastName, firstName])
+  @@map("players")
+}
+
+/// Represents a single game between two teams
+model Game {
+  id            String   @id @default(cuid())
+  gameDate      DateTime
+  location      String?  // Arena name
+  status        String   @default("scheduled") // scheduled, in_progress, completed, postponed, cancelled
+  
+  // Scores
+  homeScore     Int?
+  awayScore     Int?
+  
+  // Game timing
+  period        Int      @default(1) // Current period/quarter
+  gameClock     String?  // Time remaining in current period (e.g., "5:23")
+  
+  // Foreign Keys
+  seasonId      String
+  homeTeamId    String
+  awayTeamId    String
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  season        Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  homeTeam      Team     @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam      Team     @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
+  
+  gameStats     GameStats[]
+  playByPlayEvents PlayByPlayEvent[]
+
+  @@index([seasonId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([gameDate])
+  @@index([status])
+  @@map("games")
+}
+
+/// Represents a player's statistics for a single game
+model GameStats {
+  id              String  @id @default(cuid())
+  
+  // Foreign Keys
+  gameId          String
+  playerId        String
+  
+  // Basic Stats
+  minutesPlayed   Int     @default(0) // Total minutes played
+  points          Int     @default(0)
+  
+  // Shooting Stats
+  fieldGoalsMade      Int @default(0)
+  fieldGoalsAttempted Int @default(0)
+  threePointersMade   Int @default(0)
+  threePointersAttempted Int @default(0)
+  freeThrowsMade      Int @default(0)
+  freeThrowsAttempted Int @default(0)
+  
+  // Rebounding Stats
+  offensiveRebounds Int @default(0)
+  defensiveRebounds Int @default(0)
+  totalRebounds     Int @default(0)
+  
+  // Playmaking Stats
+  assists         Int @default(0)
+  turnovers       Int @default(0)
+  
+  // Defensive Stats
+  steals          Int @default(0)
+  blocks          Int @default(0)
+  personalFouls   Int @default(0)
+  
+  // Advanced Metrics (calculated)
+  plusMinus       Int?    // +/- while on court
+  trueShootingPct Decimal? @db.Decimal(5, 4) // TS% = PTS / (2 * (FGA + 0.44 * FTA))
+  effectiveFgPct  Decimal? @db.Decimal(5, 4) // eFG% = (FGM + 0.5 * 3PM) / FGA
+  usageRate       Decimal? @db.Decimal(5, 4) // Percentage of team plays used
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  game            Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player          Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, playerId]) // A player can only have one stat line per game
+  @@index([gameId])
+  @@index([playerId])
+  @@index([points]) // For leaderboards
+  @@index([totalRebounds])
+  @@index([assists])
+  @@map("game_stats")
+}
+
+/// Represents individual play-by-play events during a game
+model PlayByPlayEvent {
+  id              String   @id @default(cuid())
+  
+  // Foreign Keys
+  gameId          String
+  playerId        String?  // Nullable for team events (e.g., team rebounds)
+  
+  // Event Details
+  eventType       String   // e.g., "shot", "rebound", "assist", "turnover", "foul", "substitution"
+  eventSubType    String?  // e.g., "2pt", "3pt", "free_throw", "offensive", "defensive"
+  period          Int      // Quarter/Period number
+  gameClock       String   // Time in period when event occurred (e.g., "5:23")
+  gameClockSeconds Int     // Seconds remaining in period (for sorting)
+  description     String   // Human-readable description
+  
+  // Event Outcome
+  isSuccessful    Boolean? // For shots: made/missed, for passes: completed/turnover
+  
+  // Score tracking
+  homeScore       Int?     // Score after this event
+  awayScore       Int?     // Score after this event
+  
+  // Location data (optional, for shot charts)
+  courtX          Int?     // X coordinate on court
+  courtY          Int?     // Y coordinate on court
+  
+  // Additional context
+  assistPlayerId  String?  // Player who assisted (for made shots)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player          Player?  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([gameId, period, gameClockSeconds]) // Critical for chronological queries
+  @@index([playerId])
+  @@index([eventType])
+  @@index([gameId, eventType]) // For filtering events by type in a game
+  @@map("play_by_play_events")
+}

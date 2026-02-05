@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  city         String
+  abbreviation String   @unique
+  conference   String
+  division     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  awayGames    Game[]   @relation("AwayTeam")
+  homeGames    Game[]   @relation("HomeTeam")
+  players      Player[]
+
+  @@index([conference, division])
+}
+
+model Player {
+  id              String              @id @default(uuid())
+  firstName       String
+  lastName        String
+  position        Position
+  jerseyNumber    Int?
+  height          Int?
+  weight          Int?
+  birthDate       DateTime?
+  teamId          String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  advancedMetrics AdvancedMetrics[]
+  team            Team?               @relation(fields: [teamId], references: [id])
+  gameStats       PlayerGameStats[]
+  seasonStats     PlayerSeasonStats[]
+
+  @@index([teamId])
+  @@index([lastName, firstName])
+}
+
+model Game {
+  id          String            @id @default(uuid())
+  homeTeamId  String
+  awayTeamId  String
+  gameDate    DateTime
+  season      String
+  homeScore   Int?
+  awayScore   Int?
+  status      GameStatus        @default(SCHEDULED)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  awayTeam    Team              @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  homeTeam    Team              @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  playerStats PlayerGameStats[]
+
+  @@index([gameDate])
+  @@index([season])
+  @@index([homeTeamId, awayTeamId])
+}
+
+model PlayerGameStats {
+  id                     String   @id @default(uuid())
+  playerId               String
+  gameId                 String
+  minutesPlayed          Decimal  @db.Decimal(5, 2)
+  points                 Int
+  fieldGoalsMade         Int
+  fieldGoalsAttempted    Int
+  threePointersMade      Int
+  threePointersAttempted Int
+  freeThrowsMade         Int
+  freeThrowsAttempted    Int
+  offensiveRebounds      Int
+  defensiveRebounds      Int
+  totalRebounds          Int
+  assists                Int
+  steals                 Int
+  blocks                 Int
+  turnovers              Int
+  personalFouls          Int
+  plusMinus              Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  game                   Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player                 Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, gameId])
+  @@index([playerId])
+  @@index([gameId])
+}
+
+model PlayerSeasonStats {
+  id                          String   @id @default(uuid())
+  playerId                    String
+  season                      String
+  gamesPlayed                 Int
+  gamesStarted                Int?
+  totalMinutes                Decimal  @db.Decimal(8, 2)
+  totalPoints                 Int
+  totalFieldGoalsMade         Int
+  totalFieldGoalsAttempted    Int
+  totalThreePointersMade      Int
+  totalThreePointersAttempted Int
+  totalFreeThrowsMade         Int
+  totalFreeThrowsAttempted    Int
+  totalOffensiveRebounds      Int
+  totalDefensiveRebounds      Int
+  totalRebounds               Int
+  totalAssists                Int
+  totalSteals                 Int
+  totalBlocks                 Int
+  totalTurnovers              Int
+  totalPersonalFouls          Int
+  avgPoints                   Decimal  @db.Decimal(5, 2)
+  avgRebounds                 Decimal  @db.Decimal(5, 2)
+  avgAssists                  Decimal  @db.Decimal(5, 2)
+  avgMinutes                  Decimal  @db.Decimal(5, 2)
+  fieldGoalPercentage         Decimal? @db.Decimal(5, 4)
+  threePointPercentage        Decimal? @db.Decimal(5, 4)
+  freeThrowPercentage         Decimal? @db.Decimal(5, 4)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  player                      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, season])
+  @@index([season])
+}
+
+model AdvancedMetrics {
+  id                           String   @id @default(uuid())
+  playerId                     String
+  season                       String
+  trueShootingPercentage       Decimal? @db.Decimal(5, 4)
+  effectiveFieldGoalPercentage Decimal? @db.Decimal(5, 4)
+  playerEfficiencyRating       Decimal? @db.Decimal(6, 2)
+  offensiveRating              Decimal? @db.Decimal(6, 2)
+  defensiveRating              Decimal? @db.Decimal(6, 2)
+  netRating                    Decimal? @db.Decimal(6, 2)
+  usageRate                    Decimal? @db.Decimal(5, 2)
+  assistPercentage             Decimal? @db.Decimal(5, 2)
+  turnoverPercentage           Decimal? @db.Decimal(5, 2)
+  pointsPer36                  Decimal? @db.Decimal(5, 2)
+  reboundsPer36                Decimal? @db.Decimal(5, 2)
+  assistsPer36                 Decimal? @db.Decimal(5, 2)
+  stealsPer36                  Decimal? @db.Decimal(5, 2)
+  blocksPer36                  Decimal? @db.Decimal(5, 2)
+  assistToTurnoverRatio        Decimal? @db.Decimal(5, 2)
+  stealPercentage              Decimal? @db.Decimal(5, 2)
+  blockPercentage              Decimal? @db.Decimal(5, 2)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  player                       Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, season])
+  @@index([season])
+  @@index([playerEfficiencyRating])
+  @@index([trueShootingPercentage])
+}
+
+enum Position {
+  PG
+  SG
+  SF
+  PF
+  C
+}
+
+enum GameStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  POSTPONED
+  CANCELLED
+}
