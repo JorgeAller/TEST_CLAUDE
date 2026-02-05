@@ -1,5 +1,16 @@
 # CLAUDE.md
 
+## Agent Scope: BACKEND API ONLY
+
+- SOLO modificar archivos bajo `backend/src/`
+- NO modificar `backend/prisma/schema.prisma` (cambios de schema van por la rama database)
+- NO modificar archivos de `frontend/`
+- Ejecutar comandos desde `backend/`
+- Seguir el patrón Routes → Validators → Controllers → Services
+- Todos los endpoints nuevos necesitan validadores Zod
+
+---
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
