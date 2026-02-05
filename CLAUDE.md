@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+## Agent Scope: FRONTEND ONLY
+
+- SOLO modificar archivos bajo `frontend/`
+- NO modificar `backend/`, `prisma/`, `docs/` ni archivos raíz
+- Ejecutar comandos desde `frontend/`
+- El backend API corre en puerto 3000; usar el proxy de vite.config.ts
+- Usar patrones existentes en `frontend/src/features/` para nuevos módulos
+
+---
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
