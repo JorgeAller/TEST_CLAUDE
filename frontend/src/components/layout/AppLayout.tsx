@@ -67,14 +67,35 @@ export function AppLayout({ children }: AppLayoutProps) {
   const drawer = (
     <Box>
       <Toolbar>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <SportsBasketballIcon sx={{ color: 'primary.main', fontSize: 32 }} />
-          <Typography variant="h6" fontWeight={700} color="primary">
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1.5,
+            cursor: 'pointer',
+            transition: 'var(--transition-smooth)',
+            '&:hover': {
+              transform: 'scale(1.05)',
+            },
+          }}
+          onClick={() => handleNavigation('/')}
+        >
+          <SportsBasketballIcon 
+            sx={{ 
+              color: 'primary.main', 
+              fontSize: 32,
+              transition: 'var(--transition-smooth)',
+              '&:hover': {
+                transform: 'rotate(360deg)',
+              },
+            }} 
+          />
+          <Typography variant="h6" fontWeight={600} color="primary">
             Basketball Stats
           </Typography>
         </Box>
       </Toolbar>
-      <List sx={{ px: 2 }}>
+      <List sx={{ px: 2, mt: 1 }}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -85,16 +106,22 @@ export function AppLayout({ children }: AppLayoutProps) {
                   borderRadius: 2,
                   backgroundColor: isActive ? 'primary.main' : 'transparent',
                   color: isActive ? 'primary.contrastText' : 'text.primary',
+                  borderLeft: isActive ? '4px solid' : '4px solid transparent',
+                  borderLeftColor: isActive ? 'primary.contrastText' : 'transparent',
+                  pl: isActive ? 1.5 : 2,
                   '&:hover': {
                     backgroundColor: isActive ? 'primary.dark' : 'action.hover',
+                    transform: 'translateX(4px)',
+                    borderLeftColor: isActive ? 'primary.contrastText' : 'primary.main',
                   },
-                  transition: 'all 0.2s',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <ListItemIcon
                   sx={{
                     color: isActive ? 'primary.contrastText' : 'text.secondary',
                     minWidth: 40,
+                    transition: 'var(--transition-smooth)',
                   }}
                 >
                   {item.icon}
@@ -137,7 +164,17 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
-          <IconButton onClick={toggleTheme} color="inherit">
+          <IconButton 
+            onClick={toggleTheme} 
+            color="inherit"
+            sx={{
+              transition: 'var(--transition-smooth)',
+              '&:hover': {
+                transform: 'rotate(180deg)',
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
         </Toolbar>

@@ -14,7 +14,20 @@
       "Bash([ -f package.json ])",
       "Bash(wc:*)",
       "Bash(git --version:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git commit:*)",
+      "Bash(git worktree add:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(test:*)",
+      "WebFetch(domain:skills.sh)",
+      "Bash(npx skills add https://github.com/anthropics/skills --skill frontend-design)",
+      "Bash(git config:*)",
+      "Bash(npx skills:*)"
+    ],
+    "additionalDirectories": [
+      "e:\\REPOSITORIOS"
     ]
   }
 }
