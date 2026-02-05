@@ -8,6 +8,13 @@
 - Ejecutar comandos desde `backend/`
 - Seguir el patrón Routes → Validators → Controllers → Services
 - Todos los endpoints nuevos necesitan validadores Zod
+## Agent Scope: FRONTEND ONLY
+
+- SOLO modificar archivos bajo `frontend/`
+- NO modificar `backend/`, `prisma/`, `docs/` ni archivos raíz
+- Ejecutar comandos desde `frontend/`
+- El backend API corre en puerto 3000; usar el proxy de vite.config.ts
+- Usar patrones existentes en `frontend/src/features/` para nuevos módulos
 
 ---
 

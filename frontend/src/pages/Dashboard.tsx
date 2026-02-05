@@ -54,29 +54,29 @@ export function Dashboard() {
       title: 'Total Players',
       value: totalPlayers,
       icon: <PeopleIcon />,
-      color: '#2196F3',
-      bgColor: 'rgba(33, 150, 243, 0.1)',
+      color: '#6B9080', // Sage Green
+      bgColor: 'rgba(107, 144, 128, 0.12)',
     },
     {
       title: 'Active Teams',
       value: '8',
       icon: <TrophyIcon />,
-      color: '#FF6B35',
-      bgColor: 'rgba(255, 107, 53, 0.1)',
+      color: '#A8AEDD', // Soft Lavender
+      bgColor: 'rgba(168, 174, 221, 0.12)',
     },
     {
       title: 'Games Played',
       value: '156',
       icon: <SpeedIcon />,
-      color: '#10B981',
-      bgColor: 'rgba(16, 185, 129, 0.1)',
+      color: '#7FB285', // Mint
+      bgColor: 'rgba(127, 178, 133, 0.12)',
     },
     {
       title: 'Avg PPG',
       value: '24.5',
       icon: <TrendingUpIcon />,
-      color: '#9C27B0',
-      bgColor: 'rgba(156, 39, 176, 0.1)',
+      color: '#C4A57B', // Warm Terracotta
+      bgColor: 'rgba(196, 165, 123, 0.12)',
     },
   ];
 
@@ -85,17 +85,22 @@ export function Dashboard() {
       {/* Hero Section */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)',
+          background: (theme) =>
+            theme.palette.mode === 'light'
+              ? 'linear-gradient(135deg, #6B9080 0%, #7FA99B 100%)'
+              : 'linear-gradient(135deg, #577568 0%, #6A8E82 100%)',
           borderRadius: 4,
           p: 4,
           mb: 4,
           color: 'white',
+          opacity: 0,
+          animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
         }}
       >
-        <Typography variant="h3" fontWeight={700} gutterBottom>
+        <Typography variant="h3" fontWeight={600} gutterBottom>
           Basketball Statistics Dashboard
         </Typography>
-        <Typography variant="h6" sx={{ opacity: 0.9 }}>
+        <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 400 }}>
           Professional analytics and player insights
         </Typography>
       </Box>
@@ -107,10 +112,13 @@ export function Dashboard() {
             <Card
               sx={{
                 height: '100%',
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: 0,
+                animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                animationDelay: `${0.1 + index * 0.1}s`,
                 '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
+                  transform: 'translateY(-6px)',
+                  boxShadow: 6,
                 },
               }}
             >
@@ -130,7 +138,7 @@ export function Dashboard() {
                     <Typography variant="body2" color="text.secondary">
                       {stat.title}
                     </Typography>
-                    <Typography variant="h4" fontWeight={700}>
+                    <Typography variant="h4" fontWeight={600}>
                       {stat.value}
                     </Typography>
                   </Box>
@@ -142,19 +150,32 @@ export function Dashboard() {
       </Grid>
 
       {/* Featured Players */}
-      <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 3 }}>
+      <Typography
+        variant="h5"
+        fontWeight={600}
+        gutterBottom
+        sx={{
+          mb: 3,
+          opacity: 0,
+          animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          animationDelay: '0.5s',
+        }}
+      >
         Featured Players
       </Typography>
       <Grid container spacing={3}>
-        {featuredPlayers.map((player) => (
+        {featuredPlayers.map((player, index) => (
           <Grid item xs={12} md={4} key={player.id}>
             <Card
               sx={{
                 cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: 0,
+                animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                animationDelay: `${0.6 + index * 0.1}s`,
                 '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
+                  transform: 'translateY(-6px) scale(1.02)',
+                  boxShadow: 8,
                 },
               }}
               onClick={() => navigate(`/players/${player.id}`)}
@@ -167,6 +188,7 @@ export function Dashboard() {
                       height: 64,
                       bgcolor: 'primary.main',
                       fontSize: '1.5rem',
+                      fontWeight: 600,
                     }}
                   >
                     {player.firstName[0]}
