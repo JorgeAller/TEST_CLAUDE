@@ -1,5 +1,16 @@
 # CLAUDE.md
 
+## Agent Scope: DATABASE & PRISMA ONLY
+
+- Modificar archivos en `backend/prisma/` (schema activo, migraciones, seed)
+- Modificar archivos en `prisma/` (schema de referencia, funciones SQL)
+- Modificar `docs/database_documentation.md` y `DATABASE_SETUP.md`
+- NO modificar código de aplicación (`backend/src/`) ni frontend
+- Después de cambios en schema: `npx prisma generate` y `npx prisma migrate dev`
+- Ejecutar comandos desde `backend/`
+
+---
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
