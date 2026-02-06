@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { usePlayer, usePlayerStats } from '@/hooks/use-players';
+import { usePlayer, usePlayerStats, usePlayerAdvancedMetrics } from '@/hooks/use-players';
 import {
   Box,
   Card,
@@ -22,7 +22,8 @@ import {
   FitnessCenter as WeightIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { PlayerDetailSkeleton } from '@/components/skeletons/PlayerDetailSkeleton';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -44,14 +45,15 @@ export function PlayerDetailPage() {
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
   const { data: player, isLoading: playerLoading, isError: playerError } = usePlayer(id!);
-  const { data: stats, isLoading: statsLoading } = usePlayerStats(id!, '2023-24');
+  const { data: seasonStats, isLoading: statsLoading } = usePlayerStats(id!, '2023-24');
+  const { data: advancedMetrics } = usePlayerAdvancedMetrics(id!, '2023-24');
+
+  const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  }, []);
 
   if (playerLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress size={60} />
-      </Box>
-    );
+    return <PlayerDetailSkeleton />;
   }
 
   if (playerError || !player) {
@@ -61,10 +63,6 @@ export function PlayerDetailPage() {
       </Alert>
     );
   }
-
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
 
   return (
     <Box>
@@ -80,7 +78,10 @@ export function PlayerDetailPage() {
       {/* Player Header */}
       <Card
         sx={{
-          background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)',
+          background: (theme) =>
+            theme.palette.mode === 'light'
+              ? 'linear-gradient(135deg, #6B9080 0%, #7FA99B 100%)'
+              : 'linear-gradient(135deg, #577568 0%, #6A8E82 100%)',
           color: 'white',
           mb: 3,
         }}
@@ -183,37 +184,37 @@ export function PlayerDetailPage() {
             <Box display="flex" justifyContent="center" py={4}>
               <CircularProgress />
             </Box>
-          ) : stats?.seasonStats ? (
+          ) : seasonStats ? (
             <Box>
               <Typography variant="h6" fontWeight={600} gutterBottom>
                 2023-24 Season Statistics
               </Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 {[
-                  { label: 'PPG', value: Number(stats.seasonStats.avgPoints).toFixed(1) },
-                  { label: 'RPG', value: Number(stats.seasonStats.avgRebounds).toFixed(1) },
-                  { label: 'APG', value: Number(stats.seasonStats.avgAssists).toFixed(1) },
-                  { label: 'MPG', value: Number(stats.seasonStats.avgMinutes).toFixed(1) },
+                  { label: 'PPG', value: Number(seasonStats.avgPoints).toFixed(1) },
+                  { label: 'RPG', value: Number(seasonStats.avgRebounds).toFixed(1) },
+                  { label: 'APG', value: Number(seasonStats.avgAssists).toFixed(1) },
+                  { label: 'MPG', value: Number(seasonStats.avgMinutes).toFixed(1) },
                   {
                     label: 'FG%',
-                    value: stats.seasonStats.fieldGoalPercentage
-                      ? (Number(stats.seasonStats.fieldGoalPercentage) * 100).toFixed(1) + '%'
+                    value: seasonStats.fieldGoalPercentage
+                      ? (Number(seasonStats.fieldGoalPercentage) * 100).toFixed(1) + '%'
                       : '0.0%',
                   },
                   {
                     label: '3P%',
-                    value: stats.seasonStats.threePointPercentage
-                      ? (Number(stats.seasonStats.threePointPercentage) * 100).toFixed(1) + '%'
+                    value: seasonStats.threePointPercentage
+                      ? (Number(seasonStats.threePointPercentage) * 100).toFixed(1) + '%'
                       : '0.0%',
                   },
                   {
                     label: 'FT%',
-                    value: stats.seasonStats.freeThrowPercentage
-                      ? (Number(stats.seasonStats.freeThrowPercentage) * 100).toFixed(1) + '%'
+                    value: seasonStats.freeThrowPercentage
+                      ? (Number(seasonStats.freeThrowPercentage) * 100).toFixed(1) + '%'
                       : '0.0%',
                   },
                 ].map((stat, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={index}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                       <Typography variant="body2" color="text.secondary">
                         {stat.label}
@@ -232,7 +233,7 @@ export function PlayerDetailPage() {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          {stats?.advancedMetrics ? (
+          {advancedMetrics ? (
             <Box>
               <Typography variant="h6" fontWeight={600} gutterBottom>
                 Advanced Metrics
@@ -241,30 +242,30 @@ export function PlayerDetailPage() {
                 {[
                   {
                     label: 'True Shooting %',
-                    value: stats.advancedMetrics.trueShootingPercentage
-                      ? (Number(stats.advancedMetrics.trueShootingPercentage) * 100).toFixed(1) + '%'
+                    value: advancedMetrics.trueShootingPercentage
+                      ? (Number(advancedMetrics.trueShootingPercentage) * 100).toFixed(1) + '%'
                       : '0.0%',
                   },
                   {
                     label: 'PER',
-                    value: stats.advancedMetrics.playerEfficiencyRating
-                      ? Number(stats.advancedMetrics.playerEfficiencyRating).toFixed(1)
+                    value: advancedMetrics.playerEfficiencyRating
+                      ? Number(advancedMetrics.playerEfficiencyRating).toFixed(1)
                       : '0.0',
                   },
                   {
                     label: 'Offensive Rating',
-                    value: stats.advancedMetrics.offensiveRating
-                      ? Number(stats.advancedMetrics.offensiveRating).toFixed(1)
+                    value: advancedMetrics.offensiveRating
+                      ? Number(advancedMetrics.offensiveRating).toFixed(1)
                       : '0.0',
                   },
                   {
                     label: 'Defensive Rating',
-                    value: stats.advancedMetrics.defensiveRating
-                      ? Number(stats.advancedMetrics.defensiveRating).toFixed(1)
+                    value: advancedMetrics.defensiveRating
+                      ? Number(advancedMetrics.defensiveRating).toFixed(1)
                       : '0.0',
                   },
                 ].map((stat, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={index}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                       <Typography variant="body2" color="text.secondary">
                         {stat.label}

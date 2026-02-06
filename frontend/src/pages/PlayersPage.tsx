@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { usePlayers } from '@/hooks/use-players';
 import {
   Box,
   Card,
   CardContent,
-  CircularProgress,
   Grid,
   Typography,
   Alert,
@@ -15,22 +14,46 @@ import {
   Chip,
   InputAdornment,
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
+import {
+  Search as SearchIcon,
+  PersonAdd as PersonAddIcon,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Position } from '@/types';
+import { PlayersPageSkeleton } from '@/components/skeletons/PlayersPageSkeleton';
+import { AnimatedCard } from '@/components/animation/AnimatedCard';
+import { AddPlayerDialog } from '@/components/forms/AddPlayerDialog';
 
 export function PlayersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [positionFilter, setPositionFilter] = useState<string>('');
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const { data: players, isLoading, isError, error, refetch } = usePlayers();
 
+  const handleOpenAddDialog = useCallback(() => {
+    setAddDialogOpen(true);
+  }, []);
+
+  const handleCloseAddDialog = useCallback(() => {
+    setAddDialogOpen(false);
+  }, []);
+
+  // Memoize filtered players to avoid recomputing on every render
+  const filteredPlayers = useMemo(() => {
+    if (!players) return [];
+    return players.filter((player) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        player.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        player.lastName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesPosition = positionFilter === '' || player.position === positionFilter;
+      return matchesSearch && matchesPosition;
+    });
+  }, [players, searchTerm, positionFilter]);
+
   if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress size={60} />
-      </Box>
-    );
+    return <PlayersPageSkeleton />;
   }
 
   if (isError) {
@@ -48,16 +71,6 @@ export function PlayersPage() {
     );
   }
 
-  // Filter players
-  const filteredPlayers = players?.filter((player) => {
-    const matchesSearch =
-      searchTerm === '' ||
-      player.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      player.lastName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPosition = positionFilter === '' || player.position === positionFilter;
-    return matchesSearch && matchesPosition;
-  });
-
   return (
     <Box>
       {/* Header */}
@@ -65,8 +78,13 @@ export function PlayersPage() {
         <Typography variant="h4" fontWeight={700}>
           Players
         </Typography>
-        <Button variant="contained" size="large">
-          + Add Player
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={<PersonAddIcon />}
+          onClick={handleOpenAddDialog}
+        >
+          Add Player
         </Button>
       </Box>
 
@@ -74,7 +92,7 @@ export function PlayersPage() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <TextField
                 fullWidth
                 placeholder="Search players..."
@@ -89,7 +107,7 @@ export function PlayersPage() {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 select
@@ -111,99 +129,101 @@ export function PlayersPage() {
 
       {/* Players Grid */}
       <Grid container spacing={3}>
-        {filteredPlayers?.map((player) => (
-          <Grid item xs={12} sm={6} md={4} key={player.id}>
-            <Card
-              sx={{
-                cursor: 'pointer',
-                height: '100%',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                },
-              }}
-              onClick={() => navigate(`/players/${player.id}`)}
-            >
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2} mb={2}>
-                  <Avatar
-                    sx={{
-                      width: 56,
-                      height: 56,
-                      bgcolor: 'primary.main',
-                      fontSize: '1.25rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {player.firstName[0]}
-                    {player.lastName[0]}
-                  </Avatar>
-                  <Box flex={1}>
-                    <Typography variant="h6" fontWeight={600}>
-                      {player.firstName} {player.lastName}
-                    </Typography>
-                    <Box display="flex" gap={0.5} mt={0.5} flexWrap="wrap">
-                      <Chip label={player.position} size="small" color="primary" />
-                      {player.jerseyNumber && (
-                        <Chip
-                          label={`#${player.jerseyNumber}`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
+        {filteredPlayers.map((player, index) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={player.id}>
+            <AnimatedCard index={index} disableLayout>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  height: '100%',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 6,
+                  },
+                }}
+                onClick={() => navigate(`/players/${player.id}`)}
+              >
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <Avatar
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        bgcolor: 'primary.main',
+                        fontSize: '1.25rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {player.firstName[0]}
+                      {player.lastName[0]}
+                    </Avatar>
+                    <Box flex={1}>
+                      <Typography variant="h6" fontWeight={600}>
+                        {player.firstName} {player.lastName}
+                      </Typography>
+                      <Box display="flex" gap={0.5} mt={0.5} flexWrap="wrap">
+                        <Chip label={player.position} size="small" color="primary" />
+                        {player.jerseyNumber != null && (
+                          <Chip
+                            label={`#${player.jerseyNumber}`}
+                            size="small"
+                            variant="outlined"
+                          />
+                        )}
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
 
-                {player.team && (
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <Typography variant="body2" fontWeight={600} color="text.secondary">
-                      {player.team.abbreviation}
-                    </Typography>
+                  {player.team ? (
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <Typography variant="body2" fontWeight={600} color="text.secondary">
+                        {player.team.abbreviation}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        ·
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {player.team.name}
+                      </Typography>
+                    </Box>
+                  ) : null}
+
+                  {player.height && player.weight ? (
                     <Typography variant="body2" color="text.secondary">
-                      •
+                      {player.height} cm · {player.weight} kg
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {player.team.name}
+                  ) : null}
+
+                  <Box
+                    mt={2}
+                    pt={2}
+                    borderTop={1}
+                    borderColor="divider"
+                    display="flex"
+                    justifyContent="flex-end"
+                  >
+                    <Typography
+                      variant="body2"
+                      color="primary"
+                      fontWeight={600}
+                      sx={{
+                        '&:hover': {
+                          textDecoration: 'underline',
+                        },
+                      }}
+                    >
+                      View Stats →
                     </Typography>
                   </Box>
-                )}
-
-                {player.height && player.weight && (
-                  <Typography variant="body2" color="text.secondary">
-                    {player.height} cm • {player.weight} kg
-                  </Typography>
-                )}
-
-                <Box
-                  mt={2}
-                  pt={2}
-                  borderTop={1}
-                  borderColor="divider"
-                  display="flex"
-                  justifyContent="flex-end"
-                >
-                  <Typography
-                    variant="body2"
-                    color="primary"
-                    fontWeight={600}
-                    sx={{
-                      '&:hover': {
-                        textDecoration: 'underline',
-                      },
-                    }}
-                  >
-                    View Stats →
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </AnimatedCard>
           </Grid>
         ))}
       </Grid>
 
-      {filteredPlayers?.length === 0 && (
+      {filteredPlayers.length === 0 && (
         <Box textAlign="center" py={8}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No players found
@@ -213,6 +233,9 @@ export function PlayersPage() {
           </Typography>
         </Box>
       )}
+
+      {/* Add Player Dialog */}
+      <AddPlayerDialog open={addDialogOpen} onClose={handleCloseAddDialog} />
     </Box>
   );
 }

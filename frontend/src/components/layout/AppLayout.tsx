@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   AppBar,
   Box,
@@ -13,6 +13,7 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -22,6 +23,7 @@ import {
   SportsBasketball as SportsBasketballIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeMode } from '@/theme/ThemeProvider';
@@ -53,49 +55,45 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const handleDrawerToggle = useCallback(() => {
+    setMobileOpen((prev) => !prev);
+  }, []);
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = useCallback((path: string) => {
     navigate(path);
     if (isMobile) {
       setMobileOpen(false);
     }
-  };
+  }, [navigate, isMobile]);
 
   const drawer = (
-    <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
             gap: 1.5,
             cursor: 'pointer',
             transition: 'var(--transition-smooth)',
             '&:hover': {
-              transform: 'scale(1.05)',
+              transform: 'scale(1.03)',
             },
           }}
           onClick={() => handleNavigation('/')}
         >
-          <SportsBasketballIcon 
-            sx={{ 
-              color: 'primary.main', 
+          <SportsBasketballIcon
+            sx={{
+              color: 'primary.main',
               fontSize: 32,
-              transition: 'var(--transition-smooth)',
-              '&:hover': {
-                transform: 'rotate(360deg)',
-              },
-            }} 
+            }}
           />
           <Typography variant="h6" fontWeight={600} color="primary">
             Basketball Stats
           </Typography>
         </Box>
       </Toolbar>
-      <List sx={{ px: 2, mt: 1 }}>
+      <List sx={{ px: 2, mt: 1, flex: 1 }}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -137,6 +135,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           );
         })}
       </List>
+
+      {/* Sidebar footer with version */}
+      <Box sx={{ px: 3, pb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.6 }}>
+          v1.0.0
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -164,8 +169,34 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
-          <IconButton 
-            onClick={toggleTheme} 
+
+          {/* Command palette shortcut hint */}
+          <Chip
+            icon={<SearchIcon sx={{ fontSize: '1rem !important' }} />}
+            label="Ctrl+K"
+            size="small"
+            variant="outlined"
+            sx={{
+              mr: 1.5,
+              cursor: 'pointer',
+              display: { xs: 'none', sm: 'flex' },
+              borderColor: 'divider',
+              color: 'text.secondary',
+              fontSize: '0.75rem',
+              height: 28,
+              '&:hover': {
+                borderColor: 'primary.main',
+                color: 'primary.main',
+              },
+              transition: 'var(--transition-fast)',
+            }}
+            onClick={() => {
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+            }}
+          />
+
+          <IconButton
+            onClick={toggleTheme}
             color="inherit"
             sx={{
               transition: 'var(--transition-smooth)',

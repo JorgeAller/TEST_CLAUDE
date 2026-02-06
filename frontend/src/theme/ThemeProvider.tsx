@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useEffect } from '
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { createAppTheme } from './theme';
+import { SkeletonThemeWrapper } from '@/components/skeletons/SkeletonThemeWrapper';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -58,7 +59,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     <ThemeContext.Provider value={contextValue}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
-        {children}
+        <SkeletonThemeWrapper>
+          {children}
+        </SkeletonThemeWrapper>
       </MuiThemeProvider>
     </ThemeContext.Provider>
   );
