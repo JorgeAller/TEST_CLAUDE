@@ -27,7 +27,7 @@ export function DraggableWidget({ id, children }: DraggableWidgetProps) {
   };
 
   return (
-    <Box ref={setNodeRef} style={style}>
+    <Box ref={setNodeRef} style={style} sx={{ mb: 4 }}>
       <IconButton
         {...attributes}
         {...listeners}

@@ -125,7 +125,7 @@ export function Dashboard() {
   const widgetContent: Record<string, React.ReactNode> = {
     stats: (
       <Box data-tour="stat-cards">
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3}>
           {stats.map((stat, index) => (
             <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
               <AnimatedCard index={index} disableLayout>
@@ -169,7 +169,7 @@ export function Dashboard() {
       </Box>
     ),
     highlights: (
-      <Box sx={{ mb: 4 }}>
+      <Box>
         {allPlayers.length > 0 && (
           <PlayerHighlightsCarousel players={allPlayers} />
         )}

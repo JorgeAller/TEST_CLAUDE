@@ -24,7 +24,22 @@
       "WebFetch(domain:skills.sh)",
       "Bash(npx skills add https://github.com/anthropics/skills --skill frontend-design)",
       "Bash(git config:*)",
-      "Bash(npx skills:*)"
+      "Bash(npx skills:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsx watch:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx prisma db seed:*)",
+      "Bash(npx tsx:*)",
+      "Bash(netstat:*)",
+      "Bash(kill:*)",
+      "Bash(cmd.exe /c \"taskkill /PID 18164 /F\")",
+      "Bash(cmd.exe /c \"taskkill /PID 13200 /F\")",
+      "Bash(cmd.exe /c \"taskkill /PID 4364 /F\")",
+      "Bash(\"C:/Program Files/PostgreSQL/18/bin/pg_isready\" -h localhost -p 5432)",
+      "Bash(\"C:/Program Files/PostgreSQL/18/bin/psql\":*)",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\":*)"
     ],
     "additionalDirectories": [
       "e:\\REPOSITORIOS"
