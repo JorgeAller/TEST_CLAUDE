@@ -5,7 +5,7 @@ Quick start guide for setting up the basketball statistics database with Prisma 
 ## Prerequisites
 
 - Node.js 18+ installed
-- PostgreSQL 12+ installed and running
+- PostgreSQL 14+ installed and running
 - npm or yarn package manager
 
 ## Quick Setup
@@ -13,59 +13,49 @@ Quick start guide for setting up the basketball statistics database with Prisma 
 ### 1. Install Dependencies
 
 ```bash
-npm install prisma @prisma/client
-npm install -D typescript ts-node @types/node
+cd backend
+npm install
 ```
 
 ### 2. Configure Database Connection
 
-Create a `.env` file in the project root:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and update the `DATABASE_URL` with your PostgreSQL credentials:
 
 ```env
-DATABASE_URL="postgresql://username:password@localhost:5432/basketball_db?schema=public"
+DATABASE_URL="postgresql://username:password@localhost:5432/basketball_stats?schema=public"
 ```
 
-Replace `username`, `password`, and `basketball_db` with your PostgreSQL credentials.
-
-### 3. Create Database
-
-```bash
-# Using psql
-createdb basketball_db
-
-# Or using SQL
-psql -U postgres -c "CREATE DATABASE basketball_db;"
-```
-
-### 4. Run Initial Migration
-
-```bash
-# Generate and apply the migration
-npx prisma migrate dev --name init
-
-# This will:
-# - Create all tables
-# - Set up relationships
-# - Create indexes
-```
-
-### 5. Apply Advanced Metrics Functions
-
-```bash
-# Apply the SQL functions for advanced metrics
-psql -d basketball_db -f prisma/migrations/advanced_metrics.sql
-```
-
-### 6. Generate Prisma Client
+### 3. Generate Prisma Client
 
 ```bash
 npx prisma generate
 ```
 
-### 7. Verify Setup
+### 4. Run Database Migrations
 
 ```bash
-# Open Prisma Studio to view your database
+npx prisma migrate dev
+```
+
+This will:
+- Create all tables (Team, Player, Game, PlayerGameStats, PlayerSeasonStats, AdvancedMetrics)
+- Set up relationships and indexes
+- Install SQL functions for advanced metrics calculation (TS%, eFG%, PER, ORtg, AST/TO)
+- Create a database trigger that auto-calculates per-game metrics on INSERT/UPDATE
+
+### 5. Seed the Database (Optional)
+
+```bash
+npx tsx prisma/seed.ts
+```
+
+### 6. Verify Setup
+
+```bash
 npx prisma studio
 ```
 
@@ -74,20 +64,19 @@ This will open a browser interface at `http://localhost:5555` where you can view
 ## Project Structure
 
 ```
-project/
+backend/
 ├── prisma/
 │   ├── schema.prisma              # Main Prisma schema
-│   └── migrations/
-│       └── advanced_metrics.sql   # SQL functions for metrics
-├── docs/
-│   └── database_documentation.md  # Comprehensive documentation
+│   ├── seed.ts                    # Sample data seed
+│   └── migrations/                # Prisma migration history
+│       ├── 20260204161118_init/
+│       └── 20260207123733_add_per_game_advanced_metrics/
+├── src/                           # Application code
 ├── .env                           # Database connection string
 └── package.json
 ```
 
 ## Usage Example
-
-Create a file `test-db.ts`:
 
 ```typescript
 import { PrismaClient } from '@prisma/client';
@@ -95,16 +84,6 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create a season
-  const season = await prisma.season.create({
-    data: {
-      name: '2023-24',
-      startDate: new Date('2023-10-01'),
-      endDate: new Date('2024-06-30'),
-      isActive: true,
-    },
-  });
-
   // Create a team
   const team = await prisma.team.create({
     data: {
@@ -129,8 +108,8 @@ async function main() {
     },
   });
 
-  console.log('✅ Database setup successful!');
-  console.log({ season, team, player });
+  console.log('Database setup successful!');
+  console.log({ team, player });
 }
 
 main()
@@ -143,15 +122,11 @@ main()
   });
 ```
 
-Run it:
-
-```bash
-npx ts-node test-db.ts
-```
-
 ## Common Commands
 
 ```bash
+# All commands run from backend/
+
 # View database in browser
 npx prisma studio
 
@@ -175,34 +150,42 @@ npx prisma format
 
 ### Core Entities
 
-- **Season** - Basketball seasons (e.g., "2023-24")
 - **Team** - Teams with conference/division info
-- **Player** - Players with biographical data
-- **Game** - Games with home/away teams and scores
-- **GameStats** - Player statistics per game
-- **PlayByPlayEvent** - Granular play-by-play events
+- **Player** - Players with biographical data and position (PG, SG, SF, PF, C)
+- **Game** - Games with home/away teams, scores, and status
+- **PlayerGameStats** - Player box score per game + auto-calculated advanced metrics
+- **PlayerSeasonStats** - Aggregated season totals and averages
+- **AdvancedMetrics** - Season-level advanced metrics (TS%, eFG%, PER, ORtg, DRtg, USG%, per-36, etc.)
 
 ### Key Features
 
-✅ **Normalized Design** - 3NF compliance, no data redundancy  
-✅ **Complex Relationships** - Home/away teams, player-team associations  
-✅ **Performance Indexes** - Optimized for statistical queries  
-✅ **Advanced Metrics** - Auto-calculated TS%, eFG%, PER, etc.  
-✅ **Type Safety** - Full TypeScript support via Prisma Client  
+- **Normalized Design** - 3NF compliance, no data redundancy
+- **Complex Relationships** - Home/away teams, player-team associations
+- **Performance Indexes** - Optimized for statistical queries and leaderboards
+- **Auto-Calculated Metrics** - Database trigger auto-calculates TS%, eFG%, ORtg, PER, AST/TO per game
+- **SQL Functions** - 6 reusable functions for metric calculations embedded in migrations
+- **Type Safety** - Full TypeScript support via Prisma Client, Prisma enums for Position and GameStatus
 
 ## Advanced Metrics
 
-The following metrics are **automatically calculated** when you insert/update game stats:
+### Auto-Calculated on INSERT/UPDATE (via DB trigger)
 
-- **True Shooting %** (TS%)
-- **Effective Field Goal %** (eFG%)
+The following metrics are **automatically calculated** via a PostgreSQL trigger when `PlayerGameStats` records are inserted or updated:
 
-Additional metrics available via SQL functions:
+- **True Shooting % (TS%)** - `PTS / (2 * (FGA + 0.44 * FTA))`
+- **Effective Field Goal % (eFG%)** - `(FGM + 0.5 * 3PM) / FGA`
+- **Offensive Rating (ORtg)** - `(PTS / Possessions) * 100`
+- **Player Efficiency Rating (PER)** - Simplified: `(positive - negative) / MP * 100`
+- **Assist-to-Turnover Ratio** - `AST / TOV`
 
-- **Usage Rate** (USG%)
-- **Player Efficiency Rating** (PER)
-- **Offensive Rating** (ORtg)
-- **Assist-to-Turnover Ratio**
+### Available via SQL Functions (on-demand)
+
+- **Usage Rate (USG%)** - Requires team-level aggregates, call `calculate_usage_rate()` manually
+- **Batch Update** - Call `SELECT update_advanced_metrics()` to recalculate all existing rows
+
+### Season-Level Metrics (via TypeScript service)
+
+The `AdvancedMetrics` table stores season-level aggregated metrics including all the above plus: DRtg, Net Rating, AST%, TOV%, per-36 stats, STL%, BLK%.
 
 See [database_documentation.md](./docs/database_documentation.md) for detailed formulas and usage.
 
@@ -210,30 +193,31 @@ See [database_documentation.md](./docs/database_documentation.md) for detailed f
 
 ### Get Player Season Averages
 
-```typescript
-const seasonStats = await prisma.$queryRaw`
-  SELECT 
-    p."firstName" || ' ' || p."lastName" as player_name,
-    COUNT(gs.id) as games_played,
-    ROUND(AVG(gs.points), 1) as ppg,
-    ROUND(AVG(gs."totalRebounds"), 1) as rpg,
-    ROUND(AVG(gs.assists), 1) as apg,
-    ROUND(AVG(gs."trueShootingPct")::numeric, 3) as ts_pct
-  FROM game_stats gs
-  JOIN players p ON gs."playerId" = p.id
-  JOIN games g ON gs."gameId" = g.id
-  WHERE g."seasonId" = ${seasonId}
-    AND g.status = 'completed'
-  GROUP BY p.id, p."firstName", p."lastName"
-  ORDER BY ppg DESC
-  LIMIT 10
-`;
+```sql
+SELECT
+  p."firstName" || ' ' || p."lastName" as player_name,
+  COUNT(gs.id) as games_played,
+  ROUND(AVG(gs.points), 1) as ppg,
+  ROUND(AVG(gs."totalRebounds"), 1) as rpg,
+  ROUND(AVG(gs.assists), 1) as apg,
+  ROUND(AVG(gs."trueShootingPct")::numeric, 3) as ts_pct,
+  ROUND(AVG(gs."effectiveFgPct")::numeric, 3) as efg_pct,
+  ROUND(AVG(gs."offensiveRating")::numeric, 1) as ortg,
+  ROUND(AVG(gs."playerEfficiencyRating")::numeric, 1) as per
+FROM "PlayerGameStats" gs
+JOIN "Player" p ON gs."playerId" = p.id
+JOIN "Game" g ON gs."gameId" = g.id
+WHERE g.season = '2023-24'
+  AND g.status = 'COMPLETED'
+GROUP BY p.id, p."firstName", p."lastName"
+ORDER BY ppg DESC
+LIMIT 10;
 ```
 
 ### Get Game Box Score
 
 ```typescript
-const boxScore = await prisma.gameStats.findMany({
+const boxScore = await prisma.playerGameStats.findMany({
   where: { gameId: 'game_id_here' },
   include: {
     player: {
@@ -255,7 +239,7 @@ const boxScore = await prisma.gameStats.findMany({
 
 ```bash
 # Test PostgreSQL connection
-psql -U username -d basketball_db -c "SELECT version();"
+psql -U username -d basketball_stats -c "SELECT version();"
 ```
 
 ### Migration Errors
@@ -275,23 +259,13 @@ npx prisma generate
 
 ## Next Steps
 
-1. ✅ Set up the database (you're here!)
-2. 📝 Review [database_documentation.md](./docs/database_documentation.md) for detailed schema info
-3. 🔨 Build your API layer using the Prisma Client
-4. 📊 Implement statistical calculations using the provided SQL functions
-5. 🎨 Create your frontend to display the data
+1. Set up the database (you're here!)
+2. Review [database_documentation.md](./docs/database_documentation.md) for detailed schema info
+3. Build your API layer using the Prisma Client
+4. The advanced metrics are auto-calculated - just insert game stats and they appear!
 
 ## Resources
 
 - [Prisma Documentation](https://www.prisma.io/docs)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Database Schema Documentation](./docs/database_documentation.md)
-
----
-
-**Need Help?** Check the comprehensive documentation in `docs/database_documentation.md` for:
-- Entity relationship diagrams
-- Detailed field descriptions
-- Example queries
-- Performance optimization tips
-- Advanced metrics formulas

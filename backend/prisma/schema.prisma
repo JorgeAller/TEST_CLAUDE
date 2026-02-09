@@ -85,6 +85,15 @@ model PlayerGameStats {
   turnovers              Int
   personalFouls          Int
   plusMinus              Int?
+
+  // Per-game Advanced Metrics (auto-calculated via DB trigger)
+  trueShootingPct         Decimal? @db.Decimal(5, 4)  // TS%
+  effectiveFgPct          Decimal? @db.Decimal(5, 4)  // eFG%
+  usageRate               Decimal? @db.Decimal(5, 4)  // USG%
+  offensiveRating         Decimal? @db.Decimal(6, 2)  // ORtg
+  playerEfficiencyRating  Decimal? @db.Decimal(6, 2)  // PER simplificado
+  assistToTurnoverRatio   Decimal? @db.Decimal(4, 2)  // AST/TO
+
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   game                   Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)

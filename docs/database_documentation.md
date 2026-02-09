@@ -2,29 +2,20 @@
 
 ## Overview
 
-This database schema is designed for a comprehensive basketball statistics platform using PostgreSQL and Prisma ORM. It supports player tracking, game statistics, play-by-play events, and advanced metrics calculations.
+This database schema is designed for a comprehensive basketball statistics platform using PostgreSQL and Prisma ORM. It supports player tracking, game statistics, season aggregates, and advanced metrics calculations at both per-game and per-season levels.
 
 ## Entity Relationship Diagram
 
 ```mermaid
 erDiagram
-    Season ||--o{ Game : contains
     Team ||--o{ Player : has
     Team ||--o{ Game : "plays as home"
     Team ||--o{ Game : "plays as away"
-    Game ||--o{ GameStats : records
-    Game ||--o{ PlayByPlayEvent : contains
-    Player ||--o{ GameStats : achieves
-    Player ||--o{ PlayByPlayEvent : performs
-    
-    Season {
-        string id PK
-        string name UK
-        datetime startDate
-        datetime endDate
-        boolean isActive
-    }
-    
+    Game ||--o{ PlayerGameStats : records
+    Player ||--o{ PlayerGameStats : achieves
+    Player ||--o{ PlayerSeasonStats : aggregates
+    Player ||--o{ AdvancedMetrics : calculates
+
     Team {
         string id PK
         string name UK
@@ -33,73 +24,73 @@ erDiagram
         string conference
         string division
     }
-    
+
     Player {
         string id PK
         string firstName
         string lastName
+        Position position
         int jerseyNumber
-        string position
         int height
         int weight
         datetime birthDate
         string teamId FK
     }
-    
+
     Game {
         string id PK
-        datetime gameDate
-        string location
-        string status
-        int homeScore
-        int awayScore
-        string seasonId FK
         string homeTeamId FK
         string awayTeamId FK
+        datetime gameDate
+        string season
+        int homeScore
+        int awayScore
+        GameStatus status
     }
-    
-    GameStats {
+
+    PlayerGameStats {
         string id PK
-        string gameId FK
         string playerId FK
+        string gameId FK
+        decimal minutesPlayed
         int points
         int fieldGoalsMade
         int fieldGoalsAttempted
-        int threePointersMade
         int totalRebounds
         int assists
         decimal trueShootingPct
         decimal effectiveFgPct
+        decimal offensiveRating
+        decimal playerEfficiencyRating
+        decimal assistToTurnoverRatio
     }
-    
-    PlayByPlayEvent {
+
+    PlayerSeasonStats {
         string id PK
-        string gameId FK
         string playerId FK
-        string eventType
-        int period
-        string gameClock
-        int gameClockSeconds
-        boolean isSuccessful
-        int courtX
-        int courtY
+        string season
+        int gamesPlayed
+        int totalPoints
+        decimal avgPoints
+        decimal avgRebounds
+        decimal avgAssists
+        decimal fieldGoalPercentage
+    }
+
+    AdvancedMetrics {
+        string id PK
+        string playerId FK
+        string season
+        decimal trueShootingPercentage
+        decimal playerEfficiencyRating
+        decimal offensiveRating
+        decimal defensiveRating
+        decimal usageRate
+        decimal pointsPer36
     }
 ```
 
 ## Core Entities
-
-### Season
-Represents a basketball season (e.g., "2023-24").
-
-**Key Fields:**
-- `name` - Unique season identifier (e.g., "2023-24")
-- `isActive` - Indicates current active season
-- `startDate` / `endDate` - Season duration
-
-**Indexes:**
-- `isActive` - Fast filtering of active season
-
----
 
 ### Team
 Represents a basketball team with organizational details.
@@ -122,19 +113,19 @@ Represents a basketball team with organizational details.
 Represents a basketball player with biographical and team information.
 
 **Key Fields:**
-- `position` - Player position (PG, SG, SF, PF, C)
+- `position` - Prisma enum: `PG`, `SG`, `SF`, `PF`, `C`
 - `height` / `weight` - Physical measurements (cm/kg)
 - `teamId` - Current team (nullable for free agents)
 
 **Indexes:**
 - `teamId` - Fast team roster queries
-- `isActive` - Filter active/retired players
 - Composite `(lastName, firstName)` - Player search
 
 **Relationships:**
 - Many-to-One with `Team`
-- One-to-Many with `GameStats`
-- One-to-Many with `PlayByPlayEvent`
+- One-to-Many with `PlayerGameStats`
+- One-to-Many with `PlayerSeasonStats`
+- One-to-Many with `AdvancedMetrics`
 
 ---
 
@@ -144,74 +135,93 @@ Represents a single game between two teams.
 **Key Fields:**
 - `homeTeamId` / `awayTeamId` - Competing teams
 - `homeScore` / `awayScore` - Final scores
-- `status` - Game state (scheduled, in_progress, completed, etc.)
-- `period` / `gameClock` - Current game time
+- `season` - Season string (e.g., "2023-24")
+- `status` - Prisma enum: `SCHEDULED`, `IN_PROGRESS`, `COMPLETED`, `POSTPONED`, `CANCELLED`
 
 **Indexes:**
-- `seasonId` - Season game listings
-- `homeTeamId` / `awayTeamId` - Team schedules
 - `gameDate` - Chronological queries
-- `status` - Filter by game state
+- `season` - Season filtering
+- Composite `(homeTeamId, awayTeamId)` - Matchup queries
 
 **Relationships:**
-- Many-to-One with `Season`
 - Many-to-One with `Team` (home)
 - Many-to-One with `Team` (away)
-- One-to-Many with `GameStats`
-- One-to-Many with `PlayByPlayEvent`
+- One-to-Many with `PlayerGameStats`
 
 ---
 
-### GameStats
-Player statistics for a single game.
+### PlayerGameStats
+Player statistics for a single game. Includes box score data and auto-calculated advanced metrics.
 
-**Key Fields:**
-- **Shooting:** `fieldGoalsMade`, `fieldGoalsAttempted`, `threePointersMade`, `freeThrowsMade`
+**Box Score Fields:**
+- `minutesPlayed` - Decimal(5,2)
+- **Shooting:** `fieldGoalsMade`, `fieldGoalsAttempted`, `threePointersMade`, `threePointersAttempted`, `freeThrowsMade`, `freeThrowsAttempted`
 - **Rebounding:** `offensiveRebounds`, `defensiveRebounds`, `totalRebounds`
 - **Playmaking:** `assists`, `turnovers`
 - **Defense:** `steals`, `blocks`, `personalFouls`
-- **Advanced:** `trueShootingPct`, `effectiveFgPct`, `usageRate`, `plusMinus`
+- `plusMinus` - +/- while on court (nullable)
+
+**Per-Game Advanced Metrics (auto-calculated via DB trigger):**
+- `trueShootingPct` - Decimal(5,4) - TS%
+- `effectiveFgPct` - Decimal(5,4) - eFG%
+- `usageRate` - Decimal(5,4) - USG% (requires manual calculation, not auto-triggered)
+- `offensiveRating` - Decimal(6,2) - ORtg
+- `playerEfficiencyRating` - Decimal(6,2) - Simplified PER
+- `assistToTurnoverRatio` - Decimal(4,2) - AST/TO
 
 **Constraints:**
-- Unique constraint on `(gameId, playerId)` - One stat line per player per game
+- Unique constraint on `(playerId, gameId)` - One stat line per player per game
 
 **Indexes:**
-- `gameId` - All stats for a game
 - `playerId` - Player game log
-- `points`, `totalRebounds`, `assists` - Leaderboards
-
-**Auto-Calculated Fields:**
-Advanced metrics are automatically calculated via database triggers on insert/update.
+- `gameId` - All stats for a game
 
 ---
 
-### PlayByPlayEvent
-Granular play-by-play events during a game.
+### PlayerSeasonStats
+Aggregated season statistics for a player.
 
 **Key Fields:**
-- `eventType` - Event category (shot, rebound, assist, turnover, foul, substitution)
-- `eventSubType` - Specific type (2pt, 3pt, offensive, defensive)
-- `period` / `gameClock` / `gameClockSeconds` - Event timing
-- `isSuccessful` - Event outcome (made/missed shot, etc.)
-- `courtX` / `courtY` - Shot chart coordinates
-- `assistPlayerId` - Assisting player for made shots
+- `season` - Season string (e.g., "2023-24")
+- `gamesPlayed`, `gamesStarted`
+- Totals: `totalPoints`, `totalFieldGoalsMade`, `totalRebounds`, `totalAssists`, etc.
+- Averages: `avgPoints`, `avgRebounds`, `avgAssists`, `avgMinutes`
+- Percentages: `fieldGoalPercentage`, `threePointPercentage`, `freeThrowPercentage`
+
+**Constraints:**
+- Unique constraint on `(playerId, season)`
 
 **Indexes:**
-- Composite `(gameId, period, gameClockSeconds)` - **Critical for chronological queries**
-- `playerId` - Player event history
-- `eventType` - Filter by event type
-- Composite `(gameId, eventType)` - Game-specific event filtering
+- `season` - Season queries
 
-**Use Cases:**
-- Shot charts (using courtX/courtY)
-- Momentum analysis
-- Play sequencing
-- Real-time game updates
+---
+
+### AdvancedMetrics
+Season-level advanced metrics for a player, calculated by the TypeScript service.
+
+**Key Fields:**
+- `trueShootingPercentage` - Decimal(5,4)
+- `effectiveFieldGoalPercentage` - Decimal(5,4)
+- `playerEfficiencyRating` - Decimal(6,2)
+- `offensiveRating` / `defensiveRating` / `netRating` - Decimal(6,2)
+- `usageRate` - Decimal(5,2)
+- `assistPercentage` / `turnoverPercentage` - Decimal(5,2)
+- Per-36 stats: `pointsPer36`, `reboundsPer36`, `assistsPer36`, `stealsPer36`, `blocksPer36`
+- `assistToTurnoverRatio`, `stealPercentage`, `blockPercentage`
+
+**Constraints:**
+- Unique constraint on `(playerId, season)`
+
+**Indexes:**
+- `season` - Season queries
+- `playerEfficiencyRating` - PER leaderboards
+- `trueShootingPercentage` - Efficiency leaderboards
 
 ## Advanced Metrics
 
-### Automatic Calculation
-The following metrics are **automatically calculated** via database triggers when `GameStats` records are inserted or updated:
+### Auto-Calculated via DB Trigger (Per-Game)
+
+The following metrics are **automatically calculated** via a PostgreSQL `BEFORE INSERT OR UPDATE` trigger on the `PlayerGameStats` table:
 
 1. **True Shooting % (TS%)**
    - Formula: `PTS / (2 * (FGA + 0.44 * FTA))`
@@ -221,47 +231,39 @@ The following metrics are **automatically calculated** via database triggers whe
    - Formula: `(FGM + 0.5 * 3PM) / FGA`
    - Adjusts FG% for 3-pointer value
 
+3. **Offensive Rating (ORtg)**
+   - Formula: `(PTS / Possessions) * 100` where Possessions = FGA + 0.44*FTA + TOV
+   - Points produced per 100 possessions
+
+4. **Player Efficiency Rating (PER) - Simplified**
+   - Formula: `(PTS + REB + AST + STL + BLK - Missed_FG - Missed_FT - TOV) / MP * 100`
+   - Per-minute efficiency rating
+
+5. **Assist-to-Turnover Ratio**
+   - Formula: `AST / TOV`
+
 ### SQL Functions Available
 
-Additional metrics can be calculated on-demand using provided SQL functions:
+All functions are embedded in the Prisma migration and available for on-demand use:
 
-3. **Usage Rate (USG%)**
-   ```sql
-   SELECT calculate_usage_rate(
-     player_fga, player_fta, player_tov, player_mp,
-     team_fga, team_fta, team_tov, team_mp
-   );
-   ```
+| Function | Parameters | Returns | Description |
+|----------|-----------|---------|-------------|
+| `calculate_true_shooting_pct` | points, fga, fta | Decimal(5,4) | TS% |
+| `calculate_effective_fg_pct` | fgm, 3pm, fga | Decimal(5,4) | eFG% |
+| `calculate_usage_rate` | player_fga/fta/tov/mp, team_fga/fta/tov/mp | Decimal(5,4) | USG% |
+| `calculate_simple_per` | points, reb, ast, stl, blk, fgm, fga, ftm, fta, tov, mp | Decimal(6,2) | PER |
+| `calculate_offensive_rating` | points, fga, fta, tov | Decimal(6,2) | ORtg |
+| `calculate_ast_to_ratio` | assists, turnovers | Decimal(4,2) | AST/TO |
+| `update_advanced_metrics` | (none) | void | Batch recalculates all rows |
 
-4. **Player Efficiency Rating (PER)**
-   ```sql
-   SELECT calculate_simple_per(
-     points, total_rebounds, assists, steals, blocks,
-     field_goals_made, field_goals_attempted,
-     free_throws_made, free_throws_attempted,
-     turnovers, minutes_played
-   );
-   ```
-
-5. **Offensive Rating (ORtg)**
-   ```sql
-   SELECT calculate_offensive_rating(
-     points, field_goals_attempted,
-     free_throws_attempted, turnovers
-   );
-   ```
-
-6. **Assist-to-Turnover Ratio**
-   ```sql
-   SELECT calculate_ast_to_ratio(assists, turnovers);
-   ```
+**Usage Rate note:** USG% requires team-level aggregates (team FGA, FTA, TOV, minutes) that are not available in a row-level trigger, so it must be calculated manually using `calculate_usage_rate()`.
 
 ## Example Queries
 
 ### 1. Player Season Averages with Advanced Metrics
 
 ```sql
-SELECT 
+SELECT
   p."firstName" || ' ' || p."lastName" as player_name,
   t.name as team,
   COUNT(gs.id) as games_played,
@@ -272,15 +274,17 @@ SELECT
   ROUND(AVG(gs.blocks), 1) as bpg,
   ROUND(AVG(gs."trueShootingPct")::numeric, 3) as ts_pct,
   ROUND(AVG(gs."effectiveFgPct")::numeric, 3) as efg_pct,
+  ROUND(AVG(gs."offensiveRating")::numeric, 1) as ortg,
+  ROUND(AVG(gs."playerEfficiencyRating")::numeric, 1) as per,
   ROUND(AVG(gs."plusMinus"), 1) as plus_minus
-FROM game_stats gs
-JOIN players p ON gs."playerId" = p.id
-LEFT JOIN teams t ON p."teamId" = t.id
-JOIN games g ON gs."gameId" = g.id
-WHERE g."seasonId" = 'season_id_here'
-  AND g.status = 'completed'
+FROM "PlayerGameStats" gs
+JOIN "Player" p ON gs."playerId" = p.id
+LEFT JOIN "Team" t ON p."teamId" = t.id
+JOIN "Game" g ON gs."gameId" = g.id
+WHERE g.season = '2023-24'
+  AND g.status = 'COMPLETED'
 GROUP BY p.id, p."firstName", p."lastName", t.name
-HAVING COUNT(gs.id) >= 10  -- Minimum games played
+HAVING COUNT(gs.id) >= 10
 ORDER BY ppg DESC
 LIMIT 20;
 ```
@@ -288,7 +292,7 @@ LIMIT 20;
 ### 2. Game Box Score
 
 ```sql
-SELECT 
+SELECT
   p."firstName" || ' ' || p."lastName" as player,
   p."jerseyNumber" as "#",
   p.position as pos,
@@ -303,9 +307,11 @@ SELECT
   gs.blocks as blk,
   gs.turnovers as tov,
   gs."personalFouls" as pf,
-  gs."plusMinus" as "+/-"
-FROM game_stats gs
-JOIN players p ON gs."playerId" = p.id
+  gs."plusMinus" as "+/-",
+  gs."trueShootingPct" as ts,
+  gs."effectiveFgPct" as efg
+FROM "PlayerGameStats" gs
+JOIN "Player" p ON gs."playerId" = p.id
 WHERE gs."gameId" = 'game_id_here'
 ORDER BY gs.points DESC;
 ```
@@ -313,71 +319,35 @@ ORDER BY gs.points DESC;
 ### 3. Team Standings
 
 ```sql
-SELECT 
+SELECT
   t.name as team,
-  COUNT(CASE WHEN 
+  COUNT(CASE WHEN
     (g."homeTeamId" = t.id AND g."homeScore" > g."awayScore") OR
     (g."awayTeamId" = t.id AND g."awayScore" > g."homeScore")
   THEN 1 END) as wins,
-  COUNT(CASE WHEN 
+  COUNT(CASE WHEN
     (g."homeTeamId" = t.id AND g."homeScore" < g."awayScore") OR
     (g."awayTeamId" = t.id AND g."awayScore" < g."homeScore")
   THEN 1 END) as losses,
   ROUND(
-    COUNT(CASE WHEN 
+    COUNT(CASE WHEN
       (g."homeTeamId" = t.id AND g."homeScore" > g."awayScore") OR
       (g."awayTeamId" = t.id AND g."awayScore" > g."homeScore")
-    THEN 1 END)::numeric / COUNT(g.id),
+    THEN 1 END)::numeric / NULLIF(COUNT(g.id), 0),
     3
   ) as win_pct
-FROM teams t
-LEFT JOIN games g ON (g."homeTeamId" = t.id OR g."awayTeamId" = t.id)
-  AND g.status = 'completed'
-  AND g."seasonId" = 'season_id_here'
+FROM "Team" t
+LEFT JOIN "Game" g ON (g."homeTeamId" = t.id OR g."awayTeamId" = t.id)
+  AND g.status = 'COMPLETED'
+  AND g.season = '2023-24'
 GROUP BY t.id, t.name
 ORDER BY win_pct DESC, wins DESC;
 ```
 
-### 4. Shot Chart Data
+### 4. Shooting Efficiency Leaderboard
 
 ```sql
-SELECT 
-  pbe."courtX",
-  pbe."courtY",
-  pbe."isSuccessful",
-  pbe."eventSubType",
-  pbe.description
-FROM play_by_play_events pbe
-WHERE pbe."gameId" = 'game_id_here'
-  AND pbe."playerId" = 'player_id_here'
-  AND pbe."eventType" = 'shot'
-  AND pbe."courtX" IS NOT NULL
-  AND pbe."courtY" IS NOT NULL
-ORDER BY pbe.period, pbe."gameClockSeconds" DESC;
-```
-
-### 5. Play-by-Play Timeline
-
-```sql
-SELECT 
-  pbe.period,
-  pbe."gameClock",
-  p."firstName" || ' ' || p."lastName" as player,
-  pbe."eventType",
-  pbe."eventSubType",
-  pbe.description,
-  pbe."homeScore" || '-' || pbe."awayScore" as score
-FROM play_by_play_events pbe
-LEFT JOIN players p ON pbe."playerId" = p.id
-WHERE pbe."gameId" = 'game_id_here'
-ORDER BY pbe.period, pbe."gameClockSeconds" DESC
-LIMIT 100;
-```
-
-### 6. Player Shooting Efficiency Leaderboard
-
-```sql
-SELECT 
+SELECT
   p."firstName" || ' ' || p."lastName" as player,
   COUNT(gs.id) as games,
   ROUND(AVG(gs.points), 1) as ppg,
@@ -385,14 +355,14 @@ SELECT
   ROUND(AVG(gs."threePointersMade")::numeric / NULLIF(AVG(gs."threePointersAttempted"), 0) * 100, 1) as three_pct,
   ROUND(AVG(gs."trueShootingPct")::numeric * 100, 1) as ts_pct,
   ROUND(AVG(gs."effectiveFgPct")::numeric * 100, 1) as efg_pct
-FROM game_stats gs
-JOIN players p ON gs."playerId" = p.id
-JOIN games g ON gs."gameId" = g.id
-WHERE g."seasonId" = 'season_id_here'
-  AND g.status = 'completed'
+FROM "PlayerGameStats" gs
+JOIN "Player" p ON gs."playerId" = p.id
+JOIN "Game" g ON gs."gameId" = g.id
+WHERE g.season = '2023-24'
+  AND g.status = 'COMPLETED'
 GROUP BY p.id, p."firstName", p."lastName"
 HAVING COUNT(gs.id) >= 10
-  AND AVG(gs."fieldGoalsAttempted") >= 5  -- Minimum FGA per game
+  AND AVG(gs."fieldGoalsAttempted") >= 5
 ORDER BY ts_pct DESC
 LIMIT 20;
 ```
@@ -405,17 +375,18 @@ The schema includes strategic indexes for optimal query performance:
 
 1. **Foreign Key Indexes**: All foreign keys are indexed for fast joins
 2. **Composite Indexes**: Multi-column indexes for common query patterns
-   - `(gameId, period, gameClockSeconds)` on PlayByPlayEvent - chronological queries
    - `(conference, division)` on Team - standings queries
    - `(lastName, firstName)` on Player - name searches
+   - `(homeTeamId, awayTeamId)` on Game - matchup queries
 
-3. **Leaderboard Indexes**: Single-column indexes on statistical columns
-   - `points`, `totalRebounds`, `assists` on GameStats
+3. **Leaderboard Indexes**: Single-column indexes on statistical columns in AdvancedMetrics
+   - `playerEfficiencyRating` - PER leaderboard
+   - `trueShootingPercentage` - Efficiency leaderboard
 
 ### Query Optimization Tips
 
-1. **Always filter by season** when querying games to leverage the `seasonId` index
-2. **Use the status index** to filter completed games vs in-progress
+1. **Always filter by season** when querying games to leverage the `season` index
+2. **Use the status enum** to filter completed games vs in-progress
 3. **Leverage composite indexes** by including all indexed columns in WHERE clauses
 4. **Batch calculate metrics** using the `update_advanced_metrics()` function for bulk updates
 5. **Use EXPLAIN ANALYZE** to verify index usage in production queries
@@ -423,134 +394,35 @@ The schema includes strategic indexes for optimal query performance:
 ### Data Types
 
 - **Decimal(5, 4)** for percentages - stores values like 0.5234 (52.34%)
+- **Decimal(6, 2)** for ratings - stores values like 110.45
 - **Integer** for counts and scores - efficient storage and calculation
-- **String (cuid)** for IDs - globally unique, URL-safe identifiers
-- **DateTime** for timestamps - proper timezone handling
-
-## Migration Guide
-
-### Initial Setup
-
-1. **Initialize Prisma**:
-   ```bash
-   npx prisma init
-   ```
-
-2. **Configure DATABASE_URL** in `.env`:
-   ```
-   DATABASE_URL="postgresql://user:password@localhost:5432/basketball_db"
-   ```
-
-3. **Generate and apply migration**:
-   ```bash
-   npx prisma migrate dev --name init
-   ```
-
-4. **Apply advanced metrics functions**:
-   ```bash
-   psql -d basketball_db -f prisma/migrations/advanced_metrics.sql
-   ```
-
-5. **Generate Prisma Client**:
-   ```bash
-   npx prisma generate
-   ```
-
-### Updating Schema
-
-When modifying the schema:
-
-```bash
-npx prisma migrate dev --name descriptive_name
-npx prisma generate
-```
-
-## Usage in Application Code
-
-### TypeScript Example
-
-```typescript
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-// Create a new player
-const player = await prisma.player.create({
-  data: {
-    firstName: 'LeBron',
-    lastName: 'James',
-    jerseyNumber: 23,
-    position: 'SF',
-    height: 206,
-    weight: 113,
-    teamId: 'lakers_team_id',
-  },
-});
-
-// Record game stats (metrics auto-calculated via trigger)
-const stats = await prisma.gameStats.create({
-  data: {
-    gameId: 'game_id',
-    playerId: player.id,
-    minutesPlayed: 38,
-    points: 30,
-    fieldGoalsMade: 11,
-    fieldGoalsAttempted: 20,
-    threePointersMade: 2,
-    threePointersAttempted: 5,
-    freeThrowsMade: 6,
-    freeThrowsAttempted: 8,
-    totalRebounds: 8,
-    assists: 7,
-    steals: 2,
-    blocks: 1,
-    turnovers: 3,
-  },
-});
-
-// Query with relations
-const gameWithStats = await prisma.game.findUnique({
-  where: { id: 'game_id' },
-  include: {
-    homeTeam: true,
-    awayTeam: true,
-    gameStats: {
-      include: {
-        player: true,
-      },
-      orderBy: {
-        points: 'desc',
-      },
-    },
-  },
-});
-```
+- **Text (uuid)** for IDs - globally unique identifiers
+- **Timestamp(3)** for timestamps - millisecond precision
 
 ## Design Decisions
 
 ### Normalization
 - **3NF compliance**: Eliminates data redundancy
-- **Separate GameStats table**: Allows efficient querying of player performance
-- **PlayByPlayEvent granularity**: Enables detailed analysis and shot charts
+- **Separate PlayerGameStats table**: Allows efficient querying of player performance per game
+- **Separate PlayerSeasonStats / AdvancedMetrics**: Pre-aggregated data for fast season queries
+
+### Two Levels of Advanced Metrics
+- **Per-game** (in `PlayerGameStats`): Auto-calculated by DB trigger on every insert/update. Gives instant per-game advanced stats.
+- **Per-season** (in `AdvancedMetrics`): Calculated by TypeScript service from aggregated data. Includes metrics that require broader context (DRtg, USG%, per-36 stats).
 
 ### Relationships
-- **Self-referential Game relations**: Properly models home/away team dynamics
-- **Nullable player in PlayByPlayEvent**: Supports team-level events (team rebounds)
-- **Cascade deletes**: Maintains referential integrity (deleting a game removes its stats)
+- **Home/Away Game relations**: Properly models team dynamics via two FK references
+- **Cascade deletes**: Deleting a game removes its stats; deleting a player removes their stats and metrics
+- **Nullable teamId**: Supports free agent players
 
 ### Performance
 - **Strategic indexing**: Balances query speed with write performance
-- **Automatic metric calculation**: Reduces application complexity
-- **Composite indexes**: Optimizes common multi-column queries
-
-### Scalability
-- **CUID identifiers**: Distributed-friendly, no auto-increment bottlenecks
-- **Indexed foreign keys**: Maintains performance as data grows
-- **Efficient data types**: Minimizes storage footprint
+- **Automatic metric calculation via trigger**: Reduces application complexity
+- **Prisma enums**: Type-safe Position and GameStatus at both DB and application level
 
 ---
 
-**Schema Version**: 1.0  
-**Last Updated**: 2026-02-04  
-**Prisma Version**: 5.x+  
-**PostgreSQL Version**: 12+
+**Schema Version**: 2.0
+**Last Updated**: 2026-02-07
+**Prisma Version**: 5.x+
+**PostgreSQL Version**: 14+

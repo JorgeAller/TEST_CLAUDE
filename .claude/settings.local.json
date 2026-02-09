@@ -39,7 +39,9 @@
       "Bash(cmd.exe /c \"taskkill /PID 4364 /F\")",
       "Bash(\"C:/Program Files/PostgreSQL/18/bin/pg_isready\" -h localhost -p 5432)",
       "Bash(\"C:/Program Files/PostgreSQL/18/bin/psql\":*)",
-      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\":*)"
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\":*)",
+      "Bash(dir:*)",
+      "Bash(git rm:*)"
     ],
     "additionalDirectories": [
       "e:\\REPOSITORIOS"

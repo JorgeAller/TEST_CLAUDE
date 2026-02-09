@@ -77,6 +77,38 @@ basketball-stats-platform/
     └── tailwind.config.js
 ```
 
+## ⚡ Start Your Project (Quick Version)
+
+```bash
+# 1. Instalar dependencias
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+
+# 2. Configurar base de datos (editar con tus credenciales de PostgreSQL)
+cp backend/.env.example backend/.env
+#    -> Abrir backend/.env y poner tu usuario/password en DATABASE_URL
+#    -> DATABASE_URL="postgresql://TU_USUARIO:TU_PASSWORD@localhost:5432/basketball_stats?schema=public"
+
+# 3. Preparar la base de datos
+cd backend
+npx prisma generate          # Genera el cliente Prisma
+npx prisma migrate dev       # Crea las tablas (si la BD no existe, Prisma la crea)
+npx tsx prisma/seed.ts       # (Opcional) Cargar datos de ejemplo
+cd ..
+
+# 4. Levantar el proyecto (abrir 2 terminales)
+
+# Terminal 1 - Backend API (http://localhost:3000)
+cd backend && npm run dev
+
+# Terminal 2 - Frontend App (http://localhost:5173)
+cd frontend && npm run dev
+```
+
+> **Verificar:** Abrir http://localhost:5173 en el navegador. Para explorar la BD: `cd backend && npx prisma studio`
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
